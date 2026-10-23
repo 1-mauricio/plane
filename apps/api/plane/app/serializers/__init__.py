@@ -135,3 +135,8 @@ from .draft import (
     DraftIssueSerializer,
     DraftIssueDetailSerializer,
 )
+
+from .worklog import IssueWorklogSerializer
+from .custom_field import IssueCustomFieldSerializer, IssueCustomFieldValueSerializer
+from .automation import AutomationRuleSerializer
+from .insight_dashboard import InsightDashboardSerializer, InsightWidgetSerializer

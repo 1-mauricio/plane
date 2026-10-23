@@ -90,3 +90,11 @@ from .device import Device, DeviceSession
 from .sticky import Sticky
 
 from .description import Description, DescriptionVersion
+
+from .worklog import IssueWorklog
+
+from .custom_field import IssueCustomField, IssueCustomFieldValue
+
+from .automation import AutomationRule
+
+from .insight_dashboard import InsightDashboard, InsightWidget

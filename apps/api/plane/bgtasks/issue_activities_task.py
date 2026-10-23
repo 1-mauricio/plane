@@ -16,6 +16,7 @@ from django.utils import timezone
 
 # Module imports
 from plane.app.serializers import IssueActivitySerializer
+from plane.bgtasks.automation_task import run_automations
 from plane.bgtasks.notification_task import notifications
 from plane.db.models import (
     CommentReaction,
@@ -1545,6 +1546,91 @@ def create_intake_activity(
         )
 
 
+def _worklog_activity(verb, comment, data, issue_id, project_id, workspace_id, actor_id, issue_activities, epoch):
+    data = json.loads(data) if data is not None else {}
+    issue_activities.append(
+        IssueActivity(
+            issue_id=issue_id,
+            project_id=project_id,
+            workspace_id=workspace_id,
+            comment=comment,
+            verb=verb,
+            actor_id=actor_id,
+            field="worklog",
+            old_value=str(data.get("duration", "")) if verb == "deleted" else None,
+            new_value=None if verb == "deleted" else str(data.get("duration", "")),
+            new_identifier=data.get("id"),
+            epoch=epoch,
+        )
+    )
+
+
+def create_worklog_activity(
+    requested_data, current_instance, issue_id, project_id, workspace_id, actor_id, issue_activities, epoch
+):
+    _worklog_activity(
+        "created", "logged time", requested_data, issue_id, project_id, workspace_id, actor_id, issue_activities, epoch
+    )
+
+
+def update_worklog_activity(
+    requested_data, current_instance, issue_id, project_id, workspace_id, actor_id, issue_activities, epoch
+):
+    _worklog_activity(
+        "updated",
+        "updated a worklog",
+        requested_data,
+        issue_id,
+        project_id,
+        workspace_id,
+        actor_id,
+        issue_activities,
+        epoch,
+    )
+
+
+def delete_worklog_activity(
+    requested_data, current_instance, issue_id, project_id, workspace_id, actor_id, issue_activities, epoch
+):
+    _worklog_activity(
+        "deleted",
+        "deleted a worklog",
+        current_instance,
+        issue_id,
+        project_id,
+        workspace_id,
+        actor_id,
+        issue_activities,
+        epoch,
+    )
+
+
+def _automation_triggers(type, requested_data, current_instance=None):
+    if type == "issue.activity.created":
+        return ["issue_created"]
+    if type != "issue.activity.updated" or not requested_data:
+        return []
+    keys = json.loads(requested_data) if isinstance(requested_data, str) else requested_data
+    mapping = {
+        "state_id": "state_changed",
+        "state": "state_changed",
+        "priority": "priority_changed",
+        "assignee_ids": "assignee_changed",
+        "assignees": "assignee_changed",
+    }
+    old = (json.loads(current_instance) if isinstance(current_instance, str) else current_instance) or {}
+
+    def changed(k):
+        if k not in old:
+            return True
+        a, b = keys[k], old[k]
+        if isinstance(a, list) and isinstance(b, list):
+            return {str(x) for x in a} != {str(x) for x in b}
+        return str(a) != str(b)
+
+    return list(dict.fromkeys(mapping[k] for k in keys if k in mapping and changed(k)))
+
+
 # Receive message from room group
 @shared_task
 def issue_activity(
@@ -1594,6 +1680,9 @@ def issue_activity(
             "cycle.activity.deleted": delete_cycle_issue_activity,
             "module.activity.created": create_module_issue_activity,
             "module.activity.deleted": delete_module_issue_activity,
+            "worklog.activity.created": create_worklog_activity,
+            "worklog.activity.updated": update_worklog_activity,
+            "worklog.activity.deleted": delete_worklog_activity,
             "link.activity.created": create_link_activity,
             "link.activity.updated": update_link_activity,
             "link.activity.deleted": delete_link_activity,
@@ -1628,6 +1717,11 @@ def issue_activity(
 
         # Save all the values to database
         issue_activities_created = IssueActivity.objects.bulk_create(issue_activities)
+
+        # automation actions never go through issue_activity, so this cannot loop
+        if issue_id is not None:
+            for trigger in _automation_triggers(type, requested_data, current_instance):
+                run_automations.delay(str(issue_id), str(project_id), trigger, str(actor_id) if actor_id else None)
 
         if notification:
             notifications.delay(

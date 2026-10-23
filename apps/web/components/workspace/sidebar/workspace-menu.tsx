@@ -57,6 +57,13 @@ export const SidebarWorkspaceMenu = observer(function SidebarWorkspaceMenu() {
       access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
       Icon: AnalyticsOutline,
     },
+    {
+      key: "insight_dashboards",
+      labelTranslationKey: "sidebar.insight_dashboards",
+      href: `/${workspaceSlug}/insight-dashboards/`,
+      access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+      Icon: AnalyticsOutline,
+    },
   ];
 
   return (

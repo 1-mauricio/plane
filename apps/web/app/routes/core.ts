@@ -67,6 +67,12 @@ export const coreRoutes: RouteConfigEntry[] = [
           route(":workspaceSlug/active-cycles", "./(all)/[workspaceSlug]/(projects)/active-cycles/page.tsx"),
         ]),
 
+        // Insight Dashboards
+        route(":workspaceSlug/insight-dashboards", "./(all)/[workspaceSlug]/(projects)/insight-dashboards/page.tsx"),
+        route(
+          ":workspaceSlug/insight-dashboards/:dashboardId",
+          "./(all)/[workspaceSlug]/(projects)/insight-dashboards/[dashboardId]/page.tsx"
+        ),
         // Analytics
         layout("./(all)/[workspaceSlug]/(projects)/analytics/[tabId]/layout.tsx", [
           route(":workspaceSlug/analytics/:tabId", "./(all)/[workspaceSlug]/(projects)/analytics/[tabId]/page.tsx"),
@@ -327,6 +333,11 @@ export const coreRoutes: RouteConfigEntry[] = [
             route(
               ":workspaceSlug/settings/projects/:projectId/states",
               "./(all)/[workspaceSlug]/(settings)/settings/projects/[projectId]/states/page.tsx"
+            ),
+            // Project Custom Fields
+            route(
+              ":workspaceSlug/settings/projects/:projectId/custom-fields",
+              "./(all)/[workspaceSlug]/(settings)/settings/projects/[projectId]/custom-fields/page.tsx"
             ),
             // Project Labels
             route(

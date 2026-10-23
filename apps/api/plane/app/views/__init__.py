@@ -238,3 +238,8 @@ from .notification.base import MarkAllReadNotificationViewSet
 from .user.base import AccountEndpoint, ProfileEndpoint, UserSessionEndpoint
 
 from .timezone.base import TimezoneEndpoint
+
+from .issue.worklog import IssueWorklogViewSet
+from .custom_field import IssueCustomFieldViewSet, IssueCustomFieldValueEndpoint
+from .automation import AutomationRuleViewSet
+from .insight_dashboard import InsightDashboardViewSet, InsightWidgetViewSet, InsightWidgetDataEndpoint

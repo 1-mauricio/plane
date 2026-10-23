@@ -43,6 +43,8 @@ import { IssueCycleSelect } from "./cycle-select";
 import { IssueLabel } from "./label";
 import { IssueModuleSelect } from "./module-select";
 import type { TIssueOperations } from "./root";
+import { IssueCustomFieldsSection } from "@/components/custom-fields";
+import { IssueWorklogs } from "./worklogs/root";
 
 type Props = {
   workspaceSlug: string;
@@ -239,6 +241,19 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
               />
             </SidebarPropertyListItem>
           </div>
+          <IssueCustomFieldsSection
+            workspaceSlug={workspaceSlug}
+            projectId={projectId}
+            issueId={issueId}
+            disabled={!isEditable}
+          />
+          <IssueWorklogs
+            workspaceSlug={workspaceSlug}
+            projectId={projectId}
+            issueId={issueId}
+            estimatePointId={issue.estimate_point}
+            disabled={!isEditable}
+          />
         </div>
       </div>
     </>
