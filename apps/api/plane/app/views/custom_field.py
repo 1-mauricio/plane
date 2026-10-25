@@ -2,14 +2,13 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
-from django.db import transaction
 from rest_framework import status
 from rest_framework.response import Response
 
 from plane.app.permissions import ProjectAdminPermission, ProjectEntityPermission
 from plane.app.serializers import IssueCustomFieldSerializer, IssueCustomFieldValueSerializer
-from plane.db.models import Issue, IssueCustomField, IssueCustomFieldValue, ProjectMember
-from plane.utils.custom_field import validate_value
+from plane.db.models import Issue, IssueCustomField, IssueCustomFieldValue
+from plane.utils.custom_field import save_issue_custom_values
 from .base import BaseAPIView, BaseViewSet
 
 
@@ -51,40 +50,10 @@ class IssueCustomFieldValueEndpoint(BaseAPIView):
         return Response(IssueCustomFieldValueSerializer(values, many=True).data, status=status.HTTP_200_OK)
 
     def put(self, request, slug, project_id, issue_id):
-        issue = Issue.objects.select_related("project__workspace").get(
+        issue = Issue.objects.get(
             pk=issue_id, workspace__slug=slug, project_id=project_id, project__archived_at__isnull=True
         )
-        if not isinstance(request.data, dict):
-            return Response({"error": "Expected {field_id: value}"}, status=status.HTTP_400_BAD_REQUEST)
-        fields = {str(f.id): f for f in IssueCustomField.objects.filter(workspace__slug=slug, project_id=project_id)}
-        cleaned, errors = {}, {}
-        for field_id, raw in request.data.items():
-            field = fields.get(str(field_id))
-            if field is None:
-                errors[field_id] = "Unknown field"
-                continue
-            try:
-                value = validate_value(field.field_type, field.options, raw)
-            except ValueError as e:
-                errors[field_id] = str(e)
-                continue
-            if value is None and field.is_required:
-                errors[field_id] = "This field is required"
-                continue
-            if field.field_type == "user" and value is not None:
-                if not ProjectMember.objects.filter(
-                    workspace__slug=slug, project_id=project_id, member_id=value, is_active=True
-                ).exists():
-                    errors[field_id] = "User is not a project member"
-                    continue
-            cleaned[field] = value
+        errors = save_issue_custom_values(issue, request.data)
         if errors:
             return Response(errors, status=status.HTTP_400_BAD_REQUEST)
-        with transaction.atomic():
-            for field, value in cleaned.items():
-                IssueCustomFieldValue.objects.update_or_create(
-                    issue_id=issue_id,
-                    field=field,
-                    defaults={"value": value, "project": issue.project, "workspace": issue.project.workspace},
-                )
         return self.get(request, slug, project_id, issue_id)
