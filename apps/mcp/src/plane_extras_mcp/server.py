@@ -4,6 +4,7 @@
 
 """MCP tools for worklogs and custom fields. Work items are addressed by key, e.g. WEB-12."""
 
+import logging
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
@@ -117,6 +118,8 @@ def set_custom_field_values(work_item: str, values: dict[str, Any]) -> dict:
 
 
 def main():
+    # httpx logs every request at INFO, which floods the client's MCP log
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     mcp.run()
 
 

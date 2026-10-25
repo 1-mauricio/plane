@@ -36,6 +36,8 @@ class FakePlane:
         if path == f"/api/v1/workspaces/ws/projects/{PROJECT}/custom-fields/":
             return httpx.Response(200, json=FIELDS)
         if path == f"{ITEM_PATH}/custom-field-values/":
+            if method == "PUT" and json.loads(request.content).get("f-1") == "Initech":
+                return httpx.Response(400, json={"f-1": "Value is not one of the options"})
             if method == "PUT":
                 body = json.loads(request.content)
                 self.values = [{"field": k, "value": v} for k, v in body.items()]
@@ -88,6 +90,11 @@ def test_set_values_rejects_unknown_field_before_writing(client, fake):
     with pytest.raises(PlaneError, match="Unknown custom field.*Fields in this project: Customer, Points"):
         client.set_custom_values("WEB-12", {"Severity": "high"})
     assert not any(r.method == "PUT" for r in fake.requests)
+
+
+def test_set_values_reports_invalid_values_by_field_name(client):
+    with pytest.raises(PlaneError, match="'Customer': 'Value is not one of the options'"):
+        client.set_custom_values("WEB-12", {"customer": "Initech"})
 
 
 def test_resolve_project_by_identifier(client):

@@ -100,5 +100,12 @@ class PlaneClient:
             known = ", ".join(f["name"] for f in fields.values()) or "none"
             raise PlaneError(f"Unknown custom field(s): {', '.join(unknown)}. Fields in this project: {known}")
         body = {fields[name.casefold()]["id"]: value for name, value in values_by_name.items()}
-        self.request("PUT", f"/projects/{project_id}/work-items/{issue_id}/custom-field-values/", json=body)
+        response = self.http.put(f"/projects/{project_id}/work-items/{issue_id}/custom-field-values/", json=body)
+        if response.status_code == 400:
+            # the API keys errors by field id; report them by the names the caller used
+            names = {f["id"]: f["name"] for f in fields.values()}
+            errors = {names.get(field_id, field_id): error for field_id, error in response.json().items()}
+            raise PlaneError(f"No values were saved. Invalid values: {errors}")
+        if response.status_code >= 400:
+            raise PlaneError(f"PUT custom-field-values failed with {response.status_code}: {response.text[:500]}")
         return self.get_custom_values(key)
