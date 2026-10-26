@@ -20,14 +20,23 @@ export type TCreateCycleFilterParams = TCreateFilterConfigParams &
   };
 
 /**
+ * Value matched by the API's cycle_id filter for work items without a cycle
+ */
+export const NO_CYCLE_FILTER_VALUE = "none";
+
+type TCycleFilterOption = Pick<ICycle, "id" | "name" | "status">;
+
+const NO_CYCLE_OPTION: TCycleFilterOption = { id: NO_CYCLE_FILTER_VALUE, name: "No cycle", status: "draft" };
+
+/**
  * Helper to get the cycle multi select config
  * @param params - The filter params
  * @returns The cycle multi select config
  */
 export const getCycleMultiSelectConfig = (params: TCreateCycleFilterParams, singleValueOperator: TSupportedOperators) =>
-  getMultiSelectConfig<ICycle, string, TCycleGroups>(
+  getMultiSelectConfig<TCycleFilterOption, string, TCycleGroups>(
     {
-      items: params.cycles,
+      items: [NO_CYCLE_OPTION, ...params.cycles],
       getId: (cycle) => cycle.id,
       getLabel: (cycle) => cycle.name,
       getValue: (cycle) => cycle.id,

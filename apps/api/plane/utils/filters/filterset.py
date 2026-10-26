@@ -3,12 +3,13 @@
 # See the LICENSE file for details.
 
 import copy
+import uuid
 
 from django.db import models
 from django.db.models import Q
 from django_filters import FilterSet, filters
 
-from plane.db.models import Issue
+from plane.db.models import CycleIssue, Issue
 
 
 class UUIDInFilter(filters.BaseInFilter, filters.UUIDFilter):
@@ -138,8 +139,9 @@ class IssueFilterSet(BaseFilterSet):
     assignee_id = filters.UUIDFilter(method="filter_assignee_id")
     assignee_id__in = UUIDInFilter(method="filter_assignee_id_in", lookup_expr="in")
 
-    cycle_id = filters.UUIDFilter(method="filter_cycle_id")
-    cycle_id__in = UUIDInFilter(method="filter_cycle_id_in", lookup_expr="in")
+    # Accept NO_CYCLE_VALUE alongside cycle UUIDs so views can match work items without a cycle
+    cycle_id = filters.CharFilter(method="filter_cycle_id")
+    cycle_id__in = CharInFilter(method="filter_cycle_id_in", lookup_expr="in")
 
     module_id = filters.UUIDFilter(method="filter_module_id")
     module_id__in = UUIDInFilter(method="filter_module_id_in", lookup_expr="in")
@@ -226,19 +228,34 @@ class IssueFilterSet(BaseFilterSet):
             issue_assignee__deleted_at__isnull=True,
         )
 
+    NO_CYCLE_VALUE = "none"
+
     def filter_cycle_id(self, queryset, name, value):
-        """Filter by cycle ID, excluding soft deleted cycles"""
-        return Q(
-            issue_cycle__cycle_id=value,
-            issue_cycle__deleted_at__isnull=True,
-        )
+        """Filter by cycle ID (or NO_CYCLE_VALUE), excluding soft deleted cycles"""
+        return self.filter_cycle_id_in(queryset, name, [value])
 
     def filter_cycle_id_in(self, queryset, name, value):
-        """Filter by cycle IDs (in), excluding soft deleted cycles"""
-        return Q(
-            issue_cycle__cycle_id__in=value,
-            issue_cycle__deleted_at__isnull=True,
-        )
+        """Filter by cycle IDs (in) and/or NO_CYCLE_VALUE, excluding soft deleted cycles"""
+        cycle_ids = []
+        include_no_cycle = False
+        for item in value:
+            if item == self.NO_CYCLE_VALUE:
+                include_no_cycle = True
+                continue
+            try:
+                cycle_ids.append(uuid.UUID(str(item)))
+            except ValueError:
+                continue
+
+        q = Q(pk__in=[])
+        if cycle_ids:
+            q |= Q(
+                issue_cycle__cycle_id__in=cycle_ids,
+                issue_cycle__deleted_at__isnull=True,
+            )
+        if include_no_cycle:
+            q |= ~Q(pk__in=CycleIssue.objects.filter(cycle__deleted_at__isnull=True).values("issue_id"))
+        return q
 
     def filter_module_id(self, queryset, name, value):
         """Filter by module ID, excluding soft deleted modules"""
