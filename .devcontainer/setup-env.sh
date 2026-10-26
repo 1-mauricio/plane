@@ -10,7 +10,7 @@ if [ -f apps/api/.env ]; then
 fi
 
 PUBLIC_URL="https://${CODESPACE_NAME}-80.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
-rand() { tr -dc 'A-Za-z0-9' </dev/urandom | head -c"$1"; }
+rand() { openssl rand -hex 64 | head -c"$1"; }
 SECRET_KEY=$(rand 50)
 LIVE_SECRET=$(rand 32)
 S3_KEY=$(rand 20)
