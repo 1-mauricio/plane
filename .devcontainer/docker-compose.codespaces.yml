@@ -5,3 +5,7 @@ services:
     depends_on:
       - api
       - plane-redis
+
+  proxy:
+    env_file:
+      - ./.env
