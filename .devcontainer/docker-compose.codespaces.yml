@@ -1,0 +1,7 @@
+services:
+  live:
+    env_file:
+      - ./apps/live/.env
+    depends_on:
+      - api
+      - plane-redis
